@@ -1,9 +1,14 @@
 % Función kmeans
-function [assignments, centers] = kmeans(X, k, centers = 0, maxiter = 200)
-    % Tu código de k-means
+function [assignments, centers] = kmeans(X, k, centers = [], maxiter = 200)
+    % Parámetros de entrada
     numOfRows = size(X, 1);
     numOfFeatures = size(X, 2);
     assignments = ones(numOfRows, 1);
+
+    % Inicializar los centros aleatoriamente si no se proporcionan
+    if isempty(centers)
+        centers = X(randperm(numOfRows, k), :); % Escoge k puntos aleatorios de X
+    end
 
     for iter = 1:maxiter
         clusterTotals = zeros(k, numOfFeatures);
@@ -22,45 +27,32 @@ function [assignments, centers] = kmeans(X, k, centers = 0, maxiter = 200)
             end
             assignments(rowIx) = assignTo;
 
+            % Se usa una variable temporal para la actualización fuera del parfor
             clusterTotals(assignTo, :) += X(rowIx, :);
             clusterSizes(assignTo)++;
         end
 
+        % Reinitialize empty clusters
         for clusterIx = 1:k
             if (clusterSizes(clusterIx) == 0)
                 randomRow = randi([1 numOfRows]);
                 clusterTotals(clusterIx, :) = X(randomRow, :);
-                clusterSizes(clusterIx) = 1;
+                clusterSizes(clusterIx) = 1; % Asignar tamaño a 1 para evitar división por cero
             end
         end
 
         newCenters = clusterTotals ./ clusterSizes;
+
+        % Cálculo de la diferencia entre los nuevos y viejos centros
         diff = sum(sum(abs(newCenters - centers)));
 
         if diff < eps
-            break;
+            break; % Si la diferencia es menor que el umbral, termina
         end
 
-        centers = newCenters;
+        centers = newCenters; % Actualiza los centros
     end
 
-    assignments = assignments';
+    assignments = assignments'; % Transponer asignaciones para salida
 endfunction
 
-% Parámetros de entrada
-X = rand(100, 2);
-k = 15;
-maxiter = 100;
-
-% Ejecutar kmeans
-[assignments, centers] = kmeans(X, k, 0, maxiter);
-
-% Graficar los resultados
-scatter(X(:,1), X(:,2), 10, assignments);
-hold on;
-plot(centers(:,1), centers(:,2), 'kx', 'MarkerSize', 15, 'LineWidth', 3);  % Graficar centros de los clusters
-title('Resultado de k-means clustering');
-hold off;
-
-% Guardar la figura
-print -dpng 'resultado_kmeans.png';
